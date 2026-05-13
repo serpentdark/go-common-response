@@ -1,11 +1,11 @@
-# nayoo-go-common-response
+# go-common-response
 
 Go module for standardized API response format with error code system.
 
 ## Installation
 
 ```bash
-go get github.com/kittithon-p/nayoo-go-common-response
+go get github.com/serpentdark/go-common-response
 ```
 
 ## Features
@@ -29,7 +29,7 @@ Example: `C-AUT-401` = Core / Auth Service / Unauthorized
 ### Success Response
 
 ```go
-import "github.com/kittithon-p/nayoo-go-common-response"
+import "github.com/serpentdark/go-common-response"
 
 // Simple success
 resp := response.Success(map[string]string{"id": "123"})
