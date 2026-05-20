@@ -78,6 +78,7 @@ resp := response.ValidationFailed(
 - `C-SRC` - Search Service
 - `C-NOT` - Notification Service
 - `C-RPT` - Report Service
+- `C-RPT` - Product Service
 - `X-INT` - Integration Service
 
 ## Response Examples
@@ -96,19 +97,20 @@ resp := response.ValidationFailed(
 ### Error
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "C-LST-404",
-    "message": "Listing not found",
-    "details": [
-      {
-        "service": "Listing Service",
-        "issue": "Listing ID not found"
-      }
-    ],
-    "traceId": "req-555-666",
-    "timestamp": "2026-04-10T08:16:40Z"
-  }
+    "success": false,
+    "error": {
+        "code": "B-NYB-401",
+        "message": "Invalid or expired token",
+        "details": [
+            {
+                "service": "Web Application",
+                "issue": "keycloak token verify failed",
+                "err": "token is not active"
+            }
+        ],
+        "traceId": "f3a8076c56a6938a68bbc06c2290fe7d",
+        "timestamp": "2026-05-20T04:41:52Z"
+    }
 }
 ```
 
