@@ -194,6 +194,16 @@ const (
 	CRPTInternalServerError = "C-RPT-500"
 	CRPTServiceUnavailable  = "C-RPT-503"
 
+	// C-PRD - Product Service
+	CPRDBadRequest          = "C-PRD-400"
+	CPRDUnauthorized        = "C-PRD-401"
+	CPRDForbidden           = "C-PRD-403"
+	CPRDNotFound            = "C-PRD-404"
+	CPRDValidationFailed    = "C-PRD-422"
+	CPRDTooManyRequests     = "C-PRD-429"
+	CPRDInternalServerError = "C-PRD-500"
+	CPRDServiceUnavailable  = "C-PRD-503"
+
 	// Zone X - Integration Service
 	XINTBadRequest          = "X-INT-400"
 	XINTUnauthorized        = "X-INT-401"
