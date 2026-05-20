@@ -78,7 +78,7 @@ resp := response.ValidationFailed(
 - `C-SRC` - Search Service
 - `C-NOT` - Notification Service
 - `C-RPT` - Report Service
-- `C-RPT` - Product Service
+- `C-PRD` - Product Service
 - `X-INT` - Integration Service
 
 ## Response Examples
