@@ -11,14 +11,14 @@ go get github.com/serpentdark/go-common-response@latest
 Or pin a specific version:
 
 ```bash
-go get github.com/serpentdark/go-common-response@v0.1.3
+go get github.com/serpentdark/go-common-response@v0.1.5
 ```
 
 ## Features
 
 - Standardized success and error response structures
 - Zone-based error code system (B / C / X)
-- **180 pre-defined error codes** — every service covers the full HTTP status spectrum (20 codes each)
+- **200 pre-defined error codes** — every service covers the full HTTP status spectrum (20 codes each)
 - 20 helper functions for common HTTP errors (400, 401, 403, 404, 406, 408, 409, 410, 413, 415, 422, 423, 428, 429, 500, 501, 502, 503, 504, 507)
 - Pagination support
 - Async job response format
@@ -132,6 +132,7 @@ func Helper(code, message, traceID string, details ...ErrorIssue) *ErrorResponse
 | Prefix | Service |
 |--------|---------|
 | `B-NYB` | Nayoo Web BFF |
+| `B-BOB` | Backoffice BFF |
 | `C-AUT` | Auth Service |
 | `C-LST` | Listing Service |
 | `C-MED` | Media Service |
@@ -170,7 +171,7 @@ Every service block above exposes the **same 20 HTTP status codes**, named with 
 
 For example, the Auth service exposes `CAUTBadRequest` → `"C-AUT-400"`, `CAUTPreconditionRequired` → `"C-AUT-428"`, and so on for all 20 statuses. Same shape for every prefix.
 
-**Total: 9 services × 20 statuses = 180 codes.**
+**Total: 10 services × 20 statuses = 200 codes.**
 
 ### Adding a New Service
 
@@ -202,11 +203,11 @@ CTRKInsufficientStorage   = "C-TRK-507"
 {
     "success": false,
     "error": {
-        "code": "B-NYB-401",
+        "code": "B-BOB-401",
         "message": "Invalid or expired token",
         "details": [
             {
-                "service": "Web Application",
+                "service": "Backoffice BFF",
                 "issue": "keycloak token verify failed"
             }
         ],
@@ -223,6 +224,10 @@ go test -v
 ```
 
 ## Changelog
+
+### v0.1.5
+- Added `B-BOB` Backoffice BFF error code prefix with the full 20-status set.
+- Updated documentation examples to distinguish Backoffice BFF (`B-BOB`) from Nayoo Web BFF (`B-NYB`).
 
 ### v0.1.3
 - Expanded error codes to cover full HTTP status spectrum (180 codes total)

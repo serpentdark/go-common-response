@@ -150,6 +150,28 @@ const (
 	BNYBGatewayTimeout        = "B-NYB-504"
 	BNYBInsufficientStorage   = "B-NYB-507"
 
+	// B-BOB - Backoffice BFF
+	BBOBBadRequest            = "B-BOB-400"
+	BBOBUnauthorized          = "B-BOB-401"
+	BBOBForbidden             = "B-BOB-403"
+	BBOBNotFound              = "B-BOB-404"
+	BBOBNotAcceptable         = "B-BOB-406"
+	BBOBRequestTimeout        = "B-BOB-408"
+	BBOBConflict              = "B-BOB-409"
+	BBOBGone                  = "B-BOB-410"
+	BBOBPayloadTooLarge       = "B-BOB-413"
+	BBOBUnsupportedMediaType  = "B-BOB-415"
+	BBOBValidationFailed      = "B-BOB-422"
+	BBOBLocked                = "B-BOB-423"
+	BBOBPreconditionRequired  = "B-BOB-428"
+	BBOBTooManyRequests       = "B-BOB-429"
+	BBOBInternalServerError   = "B-BOB-500"
+	BBOBNotImplemented        = "B-BOB-501"
+	BBOBBadGateway            = "B-BOB-502"
+	BBOBServiceUnavailable    = "B-BOB-503"
+	BBOBGatewayTimeout        = "B-BOB-504"
+	BBOBInsufficientStorage   = "B-BOB-507"
+
 	// ---------------------------------------------------------------
 	// Zone C - Core Services
 	// C-AUT - Auth Service
