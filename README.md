@@ -11,14 +11,14 @@ go get github.com/serpentdark/go-common-response@latest
 Or pin a specific version:
 
 ```bash
-go get github.com/serpentdark/go-common-response@v0.1.5
+go get github.com/serpentdark/go-common-response@v0.1.6
 ```
 
 ## Features
 
 - Standardized success and error response structures
-- Zone-based error code system (B / C / X)
-- **200 pre-defined error codes** — every service covers the full HTTP status spectrum (20 codes each)
+- Zone-based error code system (B / C / X / W)
+- **260 pre-defined error codes** — every service covers the full HTTP status spectrum (20 codes each)
 - 20 helper functions for common HTTP errors (400, 401, 403, 404, 406, 408, 409, 410, 413, 415, 422, 423, 428, 429, 500, 501, 502, 503, 504, 507)
 - Pagination support
 - Async job response format
@@ -126,6 +126,7 @@ func Helper(code, message, traceID string, details ...ErrorIssue) *ErrorResponse
 - **B** — Web Application (BFF)
 - **C** — Core Services
 - **X** — Integration Services
+- **W** — Workers / Background Jobs
 
 ### Services & Prefixes
 
@@ -141,6 +142,9 @@ func Helper(code, message, traceID string, details ...ErrorIssue) *ErrorResponse
 | `C-RPT` | Report Service |
 | `C-PRD` | Product Service |
 | `X-INT` | Integration Service |
+| `W-RSS` | Realtime Search Sync Worker (go-realtime-search-sync) |
+| `W-PRD` | Product Worker (go-worker-product-service) |
+| `W-LST` | Listing Worker (go-worker-listing-service) |
 
 ### Codes per Service
 
@@ -171,7 +175,7 @@ Every service block above exposes the **same 20 HTTP status codes**, named with 
 
 For example, the Auth service exposes `CAUTBadRequest` → `"C-AUT-400"`, `CAUTPreconditionRequired` → `"C-AUT-428"`, and so on for all 20 statuses. Same shape for every prefix.
 
-**Total: 10 services × 20 statuses = 200 codes.**
+**Total: 13 services × 20 statuses = 260 codes.**
 
 ### Adding a New Service
 
@@ -224,6 +228,14 @@ go test -v
 ```
 
 ## Changelog
+
+### v0.1.6
+- Added Zone **W** (Workers / Background Jobs) with three prefixes covering the full 20-status spectrum:
+  - `W-RSS` — Realtime Search Sync Worker (`go-realtime-search-sync`)
+  - `W-PRD` — Product Worker (`go-worker-product-service`)
+  - `W-LST` — Listing Worker (`go-worker-listing-service`)
+- Workers reuse the same `Helper(code, message, traceID, details...)` signature — no API changes.
+- Total error codes: 200 → 260.
 
 ### v0.1.5
 - Added `B-BOB` Backoffice BFF error code prefix with the full 20-status set.

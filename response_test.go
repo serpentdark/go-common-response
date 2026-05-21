@@ -184,6 +184,24 @@ func TestAllServiceErrorCodes(t *testing.T) {
 			XINTInternalServerError, XINTBadGateway,
 			XINTServiceUnavailable, XINTGatewayTimeout,
 		},
+		"Realtime Search Sync Worker": {
+			WRSSBadRequest, WRSSNotFound, WRSSConflict,
+			WRSSValidationFailed, WRSSTooManyRequests,
+			WRSSInternalServerError, WRSSServiceUnavailable,
+			WRSSGatewayTimeout,
+		},
+		"Product Worker": {
+			WPRDBadRequest, WPRDNotFound, WPRDConflict,
+			WPRDValidationFailed, WPRDTooManyRequests,
+			WPRDInternalServerError, WPRDServiceUnavailable,
+			WPRDGatewayTimeout,
+		},
+		"Listing Worker": {
+			WLSTBadRequest, WLSTNotFound, WLSTConflict,
+			WLSTValidationFailed, WLSTTooManyRequests,
+			WLSTInternalServerError, WLSTServiceUnavailable,
+			WLSTGatewayTimeout,
+		},
 	}
 
 	t.Log("Testing all service error codes:")
