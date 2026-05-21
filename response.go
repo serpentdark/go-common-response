@@ -21,6 +21,7 @@ type ErrorDetail struct {
 	Code      string       `json:"code"`
 	Message   string       `json:"message"`
 	Details   []ErrorIssue `json:"details,omitempty"`
+	Chain     []string     `json:"chain,omitempty"`
 	TraceID   string       `json:"traceId"`
 	Timestamp string       `json:"timestamp"`
 }
@@ -29,6 +30,8 @@ type ErrorDetail struct {
 type ErrorIssue struct {
 	Service string `json:"service"`
 	Issue   string `json:"issue"`
+	Err     string `json:"err,omitempty"`
+	Code    string `json:"code,omitempty"`
 }
 
 // Pagination represents pagination information
@@ -526,4 +529,155 @@ func GatewayTimeout(code, message, traceID string, details ...ErrorIssue) *Error
 // InsufficientStorage creates a 507 Insufficient Storage error
 func InsufficientStorage(code, message, traceID string, details ...ErrorIssue) *ErrorResponse {
 	return Error(code, message, traceID, details...)
+}
+
+// ---------------------------------------------------------------------------
+// Error chaining helpers (BFF / proxy use-cases)
+// ---------------------------------------------------------------------------
+
+// NewIssue builds an ErrorIssue with a service label, human-readable issue,
+// optional raw error string, and the upstream's original error code.
+//
+//	resp := response.Unauthorized(
+//	    response.BBOBUnauthorized,
+//	    "Invalid or expired token",
+//	    traceID,
+//	    response.NewIssue("Backoffice BFF", "keycloak token verify failed",
+//	        err.Error(), ""),
+//	)
+func NewIssue(service, issue, errStr, code string) ErrorIssue {
+	return ErrorIssue{
+		Service: service,
+		Issue:   issue,
+		Err:     errStr,
+		Code:    code,
+	}
+}
+
+// WithChain appends propagation hops to an ErrorResponse so the consumer
+// can see where the error originated and how it travelled.
+//
+//	resp := response.InternalServerError(response.BBOBInternalServerError,
+//	    "upstream failure", traceID, ...).
+//	    WithChain("B-BOB", "C-LST", "C-RPT-500")
+//
+// Returns the same *ErrorResponse so the call can be chained inline.
+func (r *ErrorResponse) WithChain(hops ...string) *ErrorResponse {
+	if r == nil || r.Error == nil {
+		return r
+	}
+	r.Error.Chain = append(r.Error.Chain, hops...)
+	return r
+}
+
+// AppendIssue appends an extra ErrorIssue to the response. Useful when a
+// handler wants to add context after receiving a partial error from upstream.
+func (r *ErrorResponse) AppendIssue(issue ErrorIssue) *ErrorResponse {
+	if r == nil || r.Error == nil {
+		return r
+	}
+	r.Error.Details = append(r.Error.Details, issue)
+	return r
+}
+
+// WrapUpstream takes an upstream error envelope (typically decoded from a
+// downstream service's JSON response) and produces a new ErrorResponse whose
+// outer code/message are set by the caller, while the upstream's code,
+// message, details, and chain are preserved as the next hop.
+//
+// Typical BFF usage:
+//
+//	var upstream response.ErrorResponse
+//	_ = json.Unmarshal(body, &upstream)
+//	resp := response.WrapUpstream(
+//	    response.BBOBInternalServerError,    // outer code (this layer)
+//	    "upstream service error",            // outer message (FE-friendly)
+//	    "Backoffice BFF",                    // this layer's service label
+//	    traceID,
+//	    &upstream,
+//	)
+//	c.JSON(http.StatusInternalServerError, resp)
+//
+// The resulting payload has:
+//
+//	error.code            = outerCode                    (e.g. B-BOB-500)
+//	error.message         = outerMessage                 (FE-facing)
+//	error.chain           = [outerCode, upstream.code, ...upstream.chain]
+//	error.details         = upstream.details + one issue
+//	                        describing the upstream hop with its
+//	                        code/message/raw err string
+func WrapUpstream(outerCode, outerMessage, thisService, traceID string, upstream *ErrorResponse) *ErrorResponse {
+	resp := Error(outerCode, outerMessage, traceID)
+	resp.Error.Chain = []string{outerCode}
+
+	if upstream == nil || upstream.Error == nil {
+		return resp
+	}
+
+	up := upstream.Error
+
+	// Preserve the upstream's own details first
+	if len(up.Details) > 0 {
+		resp.Error.Details = append(resp.Error.Details, up.Details...)
+	}
+
+	// Add an explicit hop describing what came back from upstream
+	resp.Error.Details = append(resp.Error.Details, ErrorIssue{
+		Service: serviceFromCode(up.Code),
+		Issue:   up.Message,
+		Err:     firstNonEmpty(joinIssueErrs(up.Details), up.Message),
+		Code:    up.Code,
+	})
+
+	// Build the chain: [outer, ...upstream.chain OR upstream.code]
+	if len(up.Chain) > 0 {
+		resp.Error.Chain = append(resp.Error.Chain, up.Chain...)
+	} else if up.Code != "" {
+		// Fallback for upstream errors that don't have a chain yet
+		resp.Error.Chain = append(resp.Error.Chain, up.Code)
+	}
+
+	_ = thisService // reserved for future use
+	return resp
+}
+
+// serviceFromCode extracts the service prefix from a code like "C-LST-404"
+// and returns "C-LST". Returns the input unchanged if it does not look like
+// a zone-prefixed code.
+func serviceFromCode(code string) string {
+	// Expect "{Z}-{SVC}-{HTTP}" — strip the trailing -HTTP.
+	last := -1
+	for i := len(code) - 1; i >= 0; i-- {
+		if code[i] == '-' {
+			last = i
+			break
+		}
+	}
+	if last <= 0 {
+		return code
+	}
+	return code[:last]
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func joinIssueErrs(details []ErrorIssue) string {
+	out := ""
+	for _, d := range details {
+		if d.Err == "" {
+			continue
+		}
+		if out != "" {
+			out += "; "
+		}
+		out += d.Err
+	}
+	return out
 }

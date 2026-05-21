@@ -11,7 +11,7 @@ go get github.com/serpentdark/go-common-response@latest
 Or pin a specific version:
 
 ```bash
-go get github.com/serpentdark/go-common-response@v0.1.6
+go get github.com/serpentdark/go-common-response@v0.1.7
 ```
 
 ## Features
@@ -65,8 +65,8 @@ resp := response.ValidationFailed(
     response.BNYBValidationFailed,
     "Validation failed",
     "req-trace-id",
-    response.ErrorIssue{Service: "Web Application", Issue: "Email invalid"},
-    response.ErrorIssue{Service: "Web Application", Issue: "Password too short"},
+    response.NewIssue("Web Application", "Email invalid", "domain mapping failed", ""),
+    response.NewIssue("Web Application", "Password too short", "", ""),
 )
 
 // Newer helpers added in v0.1.3
@@ -86,6 +86,56 @@ resp := response.InsufficientStorage(
     response.CMEDInsufficientStorage,
     "Storage quota exceeded",
     "req-trace-id",
+)
+```
+
+### Error Chaining for BFF → Core → Downstream
+
+Use `err` on each detail for the raw diagnostic string, and `chain` to show where the error propagated.
+The outer `error.code` should be the service that directly responds to FE, while the deepest/original code remains visible in `chain` and `details[].code`.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "B-BOB-500",
+    "message": "upstream service error",
+    "details": [
+      {
+        "service": "Report Service",
+        "issue": "mongo query timeout",
+        "err": "context deadline exceeded"
+      },
+      {
+        "service": "C-RPT",
+        "issue": "failed to query monthly report",
+        "err": "context deadline exceeded",
+        "code": "C-RPT-500"
+      },
+      {
+        "service": "C-LST",
+        "issue": "downstream report failed",
+        "err": "context deadline exceeded; failed to query monthly report",
+        "code": "C-LST-500"
+      }
+    ],
+    "chain": ["B-BOB-500", "C-LST-500", "C-RPT-500"],
+    "traceId": "req-trace-id",
+    "timestamp": "2026-05-21T14:25:46Z"
+  }
+}
+```
+
+```go
+var upstream response.ErrorResponse
+_ = json.Unmarshal(body, &upstream)
+
+resp := response.WrapUpstream(
+    response.BBOBInternalServerError,
+    "upstream service error",
+    "Backoffice BFF",
+    traceID,
+    &upstream,
 )
 ```
 

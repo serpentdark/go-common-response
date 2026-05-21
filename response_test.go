@@ -152,6 +152,104 @@ func TestErrorWithoutDetails(t *testing.T) {
 	t.Logf("Error Without Details:\n%s\n", string(jsonData))
 }
 
+func TestErrorIssueErrAndCodeFields(t *testing.T) {
+	resp := Unauthorized(
+		BBOBUnauthorized,
+		"Invalid or expired token",
+		"f3a8076c56a6938a68bbc06c2290fe7d",
+		NewIssue("Backoffice BFF", "keycloak token verify failed",
+			"jwt: token signature is invalid", ""),
+	)
+
+	if resp.Error.Code != "B-BOB-401" {
+		t.Errorf("want code B-BOB-401, got %s", resp.Error.Code)
+	}
+	if len(resp.Error.Details) != 1 {
+		t.Fatalf("want 1 detail, got %d", len(resp.Error.Details))
+	}
+	if resp.Error.Details[0].Err != "jwt: token signature is invalid" {
+		t.Errorf("want err string preserved, got %q", resp.Error.Details[0].Err)
+	}
+
+	out, _ := json.MarshalIndent(resp, "", "  ")
+	t.Logf("Issue with err field:\n%s", string(out))
+}
+
+func TestWrapUpstreamChain(t *testing.T) {
+	// Imagine: BFF (B-BOB) calls Listing (C-LST) which calls Report (C-RPT)
+	// Report blew up first, Listing wrapped it, and now BFF wraps Listing.
+
+	reportErr := InternalServerError(
+		CRPTInternalServerError,
+		"failed to query monthly report",
+		"trace-rpt-1",
+		NewIssue("Report Service", "mongo query timeout",
+			"context deadline exceeded", ""),
+	)
+
+	// Listing wraps Report
+	listingErr := WrapUpstream(
+		CLSTInternalServerError,
+		"downstream report failed",
+		"Listing Service",
+		"trace-lst-1",
+		reportErr,
+	)
+
+	// BFF wraps Listing → this is what the FE receives
+	bffErr := WrapUpstream(
+		BBOBInternalServerError,
+		"upstream service error",
+		"Backoffice BFF",
+		"f3a8076c56a6938a68bbc06c2290fe7d",
+		listingErr,
+	)
+
+	if bffErr.Error.Code != "B-BOB-500" {
+		t.Errorf("want outer code B-BOB-500, got %s", bffErr.Error.Code)
+	}
+	wantChain := []string{"B-BOB-500", "C-LST-500", "C-RPT-500"}
+	if len(bffErr.Error.Chain) != len(wantChain) {
+		t.Fatalf("want chain %v, got %v", wantChain, bffErr.Error.Chain)
+	}
+	for i, hop := range wantChain {
+		if bffErr.Error.Chain[i] != hop {
+			t.Errorf("chain[%d] want %s got %s", i, hop, bffErr.Error.Chain[i])
+		}
+	}
+
+	out, _ := json.MarshalIndent(bffErr, "", "  ")
+	t.Logf("Three-level chained error:\n%s", string(out))
+}
+
+func TestWithChainHelper(t *testing.T) {
+	resp := InternalServerError(BBOBInternalServerError, "boom", "trace-1").
+		WithChain("B-BOB-500", "C-LST-500", "C-RPT-500")
+
+	if got := len(resp.Error.Chain); got != 3 {
+		t.Fatalf("want 3 hops, got %d", got)
+	}
+	if resp.Error.Chain[2] != "C-RPT-500" {
+		t.Errorf("want last hop C-RPT-500, got %s", resp.Error.Chain[2])
+	}
+}
+
+func TestServiceFromCode(t *testing.T) {
+	cases := map[string]string{
+		"B-BOB-401": "B-BOB",
+		"C-LST-500": "C-LST",
+		"C-RPT-404": "C-RPT",
+		"X-INT-502": "X-INT",
+		"":          "",
+		"weird":     "weird",
+	}
+	for in, want := range cases {
+		if got := serviceFromCode(in); got != want {
+			t.Errorf("serviceFromCode(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestAllServiceErrorCodes(t *testing.T) {
 	services := map[string][]string{
 		"BFF": {
