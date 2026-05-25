@@ -1,6 +1,7 @@
 package response
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -529,6 +530,21 @@ func GatewayTimeout(code, message, traceID string, details ...ErrorIssue) *Error
 // InsufficientStorage creates a 507 Insufficient Storage error
 func InsufficientStorage(code, message, traceID string, details ...ErrorIssue) *ErrorResponse {
 	return Error(code, message, traceID, details...)
+}
+
+// CodeForStatus returns the canonical "<prefix>-<status>" error code for the
+// given HTTP status, e.g. CodeForStatus("B-NYB", 422) == "B-NYB-422". It lets a
+// BFF that resolves a downstream status dynamically emit the code that matches
+// the status instead of hardcoding a single fallback. Statuses outside the
+// supported 20-code set fall back to "<prefix>-500".
+func CodeForStatus(prefix string, status int) string {
+	switch status {
+	case 400, 401, 403, 404, 406, 408, 409, 410, 413, 415,
+		422, 423, 428, 429, 500, 501, 502, 503, 504, 507:
+		return fmt.Sprintf("%s-%d", prefix, status)
+	default:
+		return fmt.Sprintf("%s-500", prefix)
+	}
 }
 
 // ---------------------------------------------------------------------------
