@@ -170,6 +170,25 @@ All helpers share the same signature:
 func Helper(code, message, traceID string, details ...ErrorIssue) *ErrorResponse
 ```
 
+### Status → Code
+
+`CodeForStatus` returns the canonical `<prefix>-<status>` code for an HTTP status. Use it when a BFF resolves a downstream/HTTP status dynamically and would otherwise hardcode a single fallback code — which makes a 404/422 wrongly read as a 500 on the client (the client branches on `error.code`):
+
+```go
+response.CodeForStatus("B-NYB", 422) // "B-NYB-422"
+response.CodeForStatus("C-AUT", 404) // "C-AUT-404"
+
+// Typical BFF pattern: align the envelope code with the resolved status
+status := gateway.StatusFromErr(err) // e.g. 422
+resp := response.ValidationFailed(
+    response.CodeForStatus("B-NYB", status),
+    err.Error(),
+    traceID,
+)
+```
+
+Statuses outside the supported 20-code set fall back to `<prefix>-500`.
+
 ## Error Codes
 
 ### Zone Codes
@@ -278,6 +297,11 @@ go test -v
 ```
 
 ## Changelog
+
+### v0.1.8
+- Added `CodeForStatus(prefix, status)` — returns the canonical `<prefix>-<status>` error code for an HTTP status (e.g. `CodeForStatus("B-NYB", 422)` → `"B-NYB-422"`), falling back to `<prefix>-500` for statuses outside the supported 20-code set.
+- Lets BFFs align the envelope code with a dynamically-resolved status instead of hardcoding a single 500 fallback (which made 404 / 422 responses read as server faults on the client).
+- No breaking changes — existing codes and helpers unchanged.
 
 ### v0.1.6
 - Added Zone **W** (Workers / Background Jobs) with three prefixes covering the full 20-status spectrum:

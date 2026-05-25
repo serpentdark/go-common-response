@@ -312,3 +312,43 @@ func TestAllServiceErrorCodes(t *testing.T) {
 		}
 	}
 }
+
+func TestCodeForStatus(t *testing.T) {
+	tests := []struct {
+		prefix string
+		status int
+		want   string
+	}{
+		{"B-NYB", 422, "B-NYB-422"},
+		{"B-BOB", 404, "B-BOB-404"},
+		{"C-AUT", 401, "C-AUT-401"},
+		{"C-LST", 409, "C-LST-409"},
+		{"B-NYB", 500, "B-NYB-500"},
+		{"W-LST", 503, "W-LST-503"},
+		// unsupported statuses fall back to the 500 code
+		{"B-NYB", 418, "B-NYB-500"},
+		{"C-AUT", 200, "C-AUT-500"},
+		{"X-INT", 0, "X-INT-500"},
+	}
+	for _, tt := range tests {
+		if got := CodeForStatus(tt.prefix, tt.status); got != tt.want {
+			t.Errorf("CodeForStatus(%q, %d) = %q, want %q", tt.prefix, tt.status, got, tt.want)
+		}
+	}
+}
+
+// CodeForStatus must agree with the hand-declared constants for the supported
+// statuses, guarding against drift between the helper and the code blocks.
+func TestCodeForStatusMatchesConstants(t *testing.T) {
+	cases := map[int]string{
+		400: BNYBBadRequest, 401: BNYBUnauthorized, 403: BNYBForbidden,
+		404: BNYBNotFound, 409: BNYBConflict, 422: BNYBValidationFailed,
+		429: BNYBTooManyRequests, 500: BNYBInternalServerError,
+		503: BNYBServiceUnavailable,
+	}
+	for status, want := range cases {
+		if got := CodeForStatus("B-NYB", status); got != want {
+			t.Errorf("CodeForStatus(\"B-NYB\", %d) = %q, want constant %q", status, got, want)
+		}
+	}
+}
